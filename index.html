@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL 3D 编辑器</title>
+    <style>
+        body {
+            font-family: 'Open Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        .nav-bar {
+            background-color: #3498db;
+            color: #fff;
+            padding: 8px 16px;
+            text-align: center;
+        }
+        .nav-bar ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .nav-bar ul li {
+            display: inline-block;
+            margin-right: 16px;
+        }
+        .nav-bar ul li a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .nav-bar ul li a:hover {
+            color: #2ecc71;
+        }
+        .header {
+            background-color: #9b59b6;
+            color: #fff;
+            padding: 16px;
+            text-align: center;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 8px;
+            }
+        }
+    </style>
+<meta name="description" content="主编辑器页面，支持变换、材质编辑、动画预览，优化性能以支持更大规模场景渲染"><meta name="keywords" content="WebGL,3D模型编辑器,协同编辑,GLTF,OBJ"><meta name="robots" content="index,follow,max-image-preview:large"><meta property="og:type" content="website"><meta property="og:title" content="WebGL 3D 编辑器"><meta property="og:description" content="主编辑器页面，支持变换、材质编辑、动画预览，优化性能以支持更大规模场景渲染"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="WebGL 3D 编辑器"><meta name="twitter:description" content="主编辑器页面，支持变换、材质编辑、动画预览，优化性能以支持更大规模场景渲染"><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"WebGL 3D 编辑器","description":"主编辑器页面，支持变换、材质编辑、动画预览，优化性能以支持更大规模场景渲染","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}}</script><style data-a2a="basecss">*,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0}img,canvas,svg,video,table{max-width:100%;height:auto}pre,code{white-space:pre-wrap;word-break:break-word}[data-a2a="header"]{width:100%}@media(max-width:640px){body{font-size:15px}}</style></head>
+<body>
+    <div class="nav-bar">
+        <ul>
+            <li><a href="index.html">首页</a></li>
+            <li><a href="library.html">模型库</a></li>
+            <li><a href="collaboration.html">协同编辑</a></li>
+            <li><a href="help.html">帮助与教程</a></li>
+            <li><a href="settings.html">设置</a></li>
+        </ul>
+    </div>
+    <div class="header">
+        <h1>WebGL 3D 模型编辑器</h1>
+    </div>
+    <div class="container">
+        
+<article class="card">
+    <h3>实时 3D 编辑器</h3>
+    <canvas id="glcanvas" width="800" height="600"></canvas>
+    <div style="margin-top:16px;">
+        <label>旋转 X
+            <input type="range" id="rotX" min="0" max="360" value="0" style="width:100%;">
+        </label><br>
+        <label>旋转 Y
+            <input type="range" id="rotY" min="0" max="360" value="0" style="width:100%;">
+        </label><br>
+        <label>旋转 Z
+            <input type="range" id="rotZ" min="0" max="360" value="0" style="width:100%;">
+        </label><br>
+        <label>颜色
+            <input type="color" id="colorPicker" value="#1976d2">
+        </label>
+    </div>
+    <div style="margin-top:16px;">
+        <button class="btn" onclick="location.href='library.html?id=model'">模型库</button>
+        <button class="btn" onclick="location.href='collaboration.html?id=session'">协同编辑</button>
+        <button class="btn" onclick="location.href='help.html'">帮助与教程</button>
+        <button class="btn" onclick="location.href='settings.html'">设置</button>
+    </div>
+</article>
+
+<section>
+    <h2>动画预览</h2>
+    <div style="margin-top:8px;">
+        <button class="btn" id="playBtn">播放</button>
+        <button class="btn" id="stopBtn">停止</button>
+        <input type="range" id="animSpeed" min="0.1" max="5" step="0.1" value="1" style="width:200px;margin-left:8px;">
+        <span id="speedLabel">速度: 1.0x</span>
+    </div>
+</section>
+
+<script>
+(function () {
+    const canvas = document.getElementById('glcanvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) {
+        canvas.parentElement.innerHTML = '<p>抱歉，您的浏览器不支持 WebGL。</p>';
+        return;
+    }
+
+    // 顶点着色器
+    const vsSource = `
+        attribute vec3 position;
+        uniform mat4 uMVPMatrix;
+        void main() {
+            gl_Position = uMVPMatrix * vec4(position, 1.0);
+        }
+    `;
+    // 片元着色器
+    const fsSource = `
+        precision mediump float;
+        uniform vec4 uColor;
+        void main() {
+            gl_FragColor = uColor;
+        }
+    `;
+
+    function compileShader(source, type) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert('着色器编译错误: ' + gl.getShaderInfoLog(shader));
+            gl.deleteShader(shader);
+            return null;
+        }
+        return shader;
+    }
+
+    const vertexShader = compileShader(vsSource, gl.VERTEX_SHADER);
+    const fragmentShader = compileShader(fsSource, gl.FRAGMENT_SHADER);
+    const program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        alert('程序链接错误: ' + gl.getProgramInfoLog(program));
+    }
+    gl.useProgram(program);
+
+    // 位置属性
+    const positionAttribLocation = gl.getAttribLocation(program, 'position');
+    const positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    // 一个简单的三角形
+    const positions = [
+        0.0,  0.5, 0.0,
+       -0.5, -0.5, 0.0,
+        0.5, -0.5, 0.0
+    ];
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(positionAttribLocation);
+    gl.vertexAttribPointer(positionAttribLocation, 3, gl.FLOAT, false, 0, 0);
+
+    // Uniform locations
+    const uMVPMatrixLocation = gl.getUniformLocation(program, 'uMVPMatrix');
+    const uColorLocation = gl.getUniformLocation(program, 'uColor');
+
+    // 简单的矩阵工具
+    const mat4 = {
+        identity() {
+            return [
+                1,0,0,0,
+                0,1,0,0,
+                0,0,1,0,
+                0,0,0,1
+            ];
+        },
+        multiply(a, b) {
+            const out = new Float32Array(16);
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < 4; k++) {
+                        sum += a[i * 4 + k] * b[k * 4 + j];
+                    }
+                    out[i * 4 + j] = sum;
+                }
+            }
+            return out;
+        },
+        rotateX(m, angle) {
+            const c = Math.cos(angle);
+            const s = Math.sin(angle);
+            const rx = [
+                1,0,0,0,
+                0,c,-s,0,
+                0,s,c,0,
+                0,0,0,1
+            ];
+            return this.multiply(m, rx);
+        },
+        rotateY(m, angle) {
+            const c = Math.cos(angle);
+            const s = Math.sin(angle);
+            const ry = [
+                c,0,s,0,
+                0,1,0,0,
+                -s,0,c,0,
+                0,0,0,1
+            ];
+            return this.multiply(m, ry);
+        },
+        rotateZ(m, angle) {
+            const c = Math.cos(angle);
+            const s = Math.sin(angle);
+            const rz = [
+                c,-s,0,0,
+                s,c,0,0,
+                0,0,1,0,
+                0,0,0,1
+            ];
+            return this.multiply(m, rz);
+        },
+        perspective(fov, aspect, near, far) {
+            const f = 1.0 / Math.tan(fov / 2);
+            const nf = 1 / (near - far);
+            return [
+                f / aspect, 0, 0, 0,
+                0, f, 0, 0,
+                0, 0, (far + near) * nf, -1,
+                0, 0, (2 * far * near) * nf, 0
+            ];
+        }
+    };
+
+    // 控制元素
+    const rotXInput = document.getElementById('rotX');
+    const rotYInput = document.getElementById('rotY');
+    const rotZInput = document.getElementById('rotZ');
+    const colorPicker = document.getElementById('colorPicker');
+    const playBtn = document.getElementById('playBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const animSpeedInput = document.getElementById('animSpeed');
+    const speedLabel = document.getElementById('speedLabel');
+
+    let rotation = {x:0, y:0, z:0};
+    let animate = false;
+    let lastTime = 0;
+    let speed = 1.0;
+
+    function updateSpeedLabel() {
+        speedLabel.textContent = `速度: ${speed.toFixed(1)}x`;
+    }
+    animSpeedInput.addEventListener('input', () => {
+        speed = parseFloat(animSpeedInput.value);
+        updateSpeedLabel();
+    ();
+    ();
+    });
+    updateSpeedLabel();
+
+    playBtn.addEventListener('click', () => { animate = true; });
+    stopBtn.addEventListener('click', () => { animate = false; });
+
+    function draw(timestamp) {
+        if (!lastTime) lastTime = timestamp;
+        const delta = (timestamp - lastTime) / 1000; // seconds
+        lastTime = timestamp;
+
+        if (animate) {
+            rotation.y += speed * delta * Math.PI; // 旋转速度
+        }
+
+        // 读取滑块角度（用于手动控制）
+        rotation.x = rotXInput.value * Math.PI / 180;
+        rotation.y = rotYInput.value * Math.PI / 180 + (animate ? speed * delta * Math.PI : 0);
+        rotation.z = rotZInput.value * Math.PI / 180;
+
+        // 构建模型视图投影矩阵
+        let matrix = mat4.identity();
+        matrix = mat4.rotateX(matrix, rotation.x);
+        matrix = mat4.rotateY(matrix, rotation.y);
+        matrix = mat4.rotateZ(matrix, rotation.z);
+        const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+        const projection = mat4.perspective(Math.PI / 4, aspect, 0.1, 100.0);
+        matrix = mat4.multiply(projection, matrix);
+
+        gl.uniformMatrix4fv(uMVPMatrixLocation, false, new Float32Array(matrix));
+        const color = hexToRgb(colorPicker.value);
+        gl.uniform4f(uColorLocation, color.r, color.g, color.b, 1.0);
+
+        gl.clearColor(0.95, 0.95, 0.95, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.enable(gl.DEPTH_TEST);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+        requestAnimationFrame(draw);
+    }
+    requestAnimationFrame(draw);
+
+    // 辅助：将 #rrggbb 转为 0~1 的 rgb
+    function hexToRgb(hex) {
+        const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+        hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16) / 255,
+            g: parseInt(result[2], 16) / 255,
+            b: parseInt(result[3], 16) / 255
+        } : {r:0, g:0, b:0};
+    }
+})();
+</script>
+
+    </div>
+<footer data-a2a="footer" style="margin-top:48px;padding:28px 16px;border-top:1px solid rgba(127,127,127,.16);text-align:center;font-family:system-ui,-apple-system,'PingFang SC',sans-serif;line-height:1.9;color:#8a8f99;background:transparent"><a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:10px"><img src="https://agent.oagi.com.cn/uploads/202606/29ea3ed5413830b3.png" alt="AutoA2A" style="height:36px;vertical-align:middle;border:0"></a><div style="font-size:13.5px;color:#6b7280;max-width:760px;margin:0 auto 6px">✅️ <b>AutoA2A</b> · 智能体互连 Agent to Agent 平台——让智能体无缝发现、协商、协作与安全交换数据，开启 AI 即服务新时代。</div><div style="font-size:13px">本网站由 <a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="color:#f2603c;text-decoration:none;font-weight:600">www.autoa2a.org</a> 多个 AI 协作生成</div><div style="font-size:12px;color:#aab;margin-top:6px">Copyright © 2025 - 2026 AutoA2A. All Rights Reserved. A2A版权所有</div></footer></body>
+</html>
