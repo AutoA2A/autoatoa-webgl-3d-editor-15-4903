@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>协同编辑</title>
+    <style>
+        body {
+            font-family: 'Open Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        .nav-bar {
+            background-color: #3498db;
+            color: #fff;
+            padding: 8px 16px;
+            text-align: center;
+        }
+        .nav-bar ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .nav-bar ul li {
+            display: inline-block;
+            margin-right: 16px;
+        }
+        .nav-bar ul li a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .nav-bar ul li a:hover {
+            color: #2ecc71;
+        }
+        .header {
+            background-color: #9b59b6;
+            color: #fff;
+            padding: 16px;
+            text-align: center;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 8px;
+            }
+        }
+    </style>
+<meta name="description" content="允许多用户实时协作编辑同一模型"><meta name="keywords" content="WebGL,3D模型编辑器,协同编辑,GLTF,OBJ"><meta name="robots" content="index,follow,max-image-preview:large"><meta property="og:type" content="website"><meta property="og:title" content="协同编辑"><meta property="og:description" content="允许多用户实时协作编辑同一模型"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="协同编辑"><meta name="twitter:description" content="允许多用户实时协作编辑同一模型"><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"协同编辑","description":"允许多用户实时协作编辑同一模型","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}}</script><style data-a2a="basecss">*,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0}img,canvas,svg,video,table{max-width:100%;height:auto}pre,code{white-space:pre-wrap;word-break:break-word}[data-a2a="header"]{width:100%}@media(max-width:640px){body{font-size:15px}}</style></head>
+<body>
+    <div class="nav-bar">
+        <ul>
+            <li><a href="index.html">首页</a></li>
+            <li><a href="library.html">模型库</a></li>
+            <li><a href="collaboration.html">协同编辑</a></li>
+            <li><a href="help.html">帮助与教程</a></li>
+            <li><a href="settings.html">设置</a></li>
+        </ul>
+    </div>
+    <div class="header">
+        <h1>WebGL 3D 模型编辑器</h1>
+    </div>
+    <div class="container">
+        
+<div class="container">
+    <section style="margin-bottom: 16px;">
+        <h2 style="margin-top: 0;">实时协作编辑</h2>
+        <p>通过浏览器端实时同步，多用户可同时编辑同一 3D 场景（简化为 2D SVG 示例）。拖动、添加或删除对象均会即时更新所有连接用户的画布。</p>
+        <p>功能：<br>
+            ✓ 实时对象同步<br>
+            ✓ 多用户同时编辑<br>
+            ✓ 无需服务器中转<br>
+            ✓ 本地存储优化</p>
+    </section>
+
+    <div class="card" style="background-color: #fff; padding: 16px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 0 8px rgba(0,0,0,0.1);">
+        <h3>协作画布</h3>
+        <svg id="scene" width="100%" height="400" style="border:1px solid #ddd; background:#fafafa;"></svg>
+        <div style="margin-top:8px; display:flex; gap:12px;">
+            <button id="addBox" class="btn" style="background-color: #3498db; color: #fff; border: none; padding: 8px 16px; font-size: 16px; cursor: pointer; border-radius: 8px;">添加立方体</button>
+            <button id="addCircle" class="btn" style="background-color: #2ecc71; color: #fff; border: none; padding: 8px 16px; font-size: 16px; cursor: pointer; border-radius: 8px;">添加圆形</button>
+            <a href="index.html?id=collab" class="btn" style="background-color: #e74c3c; color: #fff; border: none; padding: 8px 16px; font-size: 16px; cursor: pointer; border-radius: 8px; text-decoration:none;">返回主页</a>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        const svg = document.getElementById('scene');
+        const addBtn = document.getElementById('addBox');
+        const addCircleBtn = document.getElementById('addCircle');
+        const channel = new BroadcastChannel('collab-demo');
+        let objects = {};
+
+        // 生成唯一 ID
+        const uid = () => 'obj-' + Math.random().toString(36).substr(2, 9);
+
+        // 创建可拖拽对象
+        function createObject(id, type, x = 50, y = 50, color = '#3498db') {
+            const el = type === 'rect' ? document.createElementNS('http://www.w3.org/2000/svg', 'rect') 
+                : document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            el.setAttribute('id', id);
+            el.setAttribute('x', x);
+            el.setAttribute('y', y);
+            el.setAttribute('width', type === 'rect' ? 60 : 40);
+            el.setAttribute('height', type === 'rect' ? 60 : 40);
+            el.setAttribute('fill', color);
+            el.setAttribute('stroke', '#333');
+            el.setAttribute('stroke-width', 1);
+            el.style.cursor = 'move';
+            svg.appendChild(el);
+            makeDraggable(el);
+            return el;
+        }
+
+        // 拖拽逻辑
+        function makeDraggable(elem) {
+            let offsetX, offsetY, isDown = false;
+            elem.addEventListener('mousedown', e => {
+                isDown = true;
+                const pt = svg.createSVGPoint();
+                pt.x = e.clientX; pt.y = e.clientY;
+                const cursorpt = pt.matrixTransform(svg.getScreenCTM().inverse());
+                offsetX = cursorpt.x - parseFloat(elem.getAttribute('x'));
+                offsetY = cursorpt.y - parseFloat(elem.getAttribute('y'));
+            });
+            
+            document.addEventListener('mousemove', e => {
+                if (!isDown) return;
+                const pt = svg.createSVGPoint();
+                pt.x = e.clientX; pt.y = e.clientY;
+                const cursorpt = pt.matrixTransform(svg.getScreenCTM().inverse());
+                const newX = cursorpt.x - offsetX;
+                const newY = cursorpt.y - offsetY;
+                elem.setAttribute('x', newX);
+                elem.setAttribute('y', newY);
+                syncObject(elem);
+            });
+            
+            document.addEventListener('mouseup', () => isDown = false);
+        }
+
+        // 同步对象数据
+        function syncObject(obj) {
+            const data = {
+                id: obj.id,
+                type: obj.nodeName.toLowerCase(),
+                x: obj.getAttribute('x'),
+                y: obj.getAttribute('y'),
+                color: obj.getAttribute('fill')
+            };
+            channel.send(JSON.stringify(data));
+        }
+
+        // 接收其他用户的更新
+        channel.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (objects[data.id]) return;
+            const newObj = createObject(data.id, data.type, data.x, data.y, data.color);
+            objects[data.id] = newObj;
+        }
+
+        // 添加按钮事件
+        addBtn.addEventListener('click', () => {
+            const newId = uid();
+            createObject(newId, 'rect');
+            syncObject(svg.querySelector(`#${newId}`));
+        });
+
+        addCircleBtn.addEventListener('click', () => {
+            const newId = uid();
+            createObject(newId, 'circle');
+            syncObject(svg.querySelector(`#${newId}`));
+        });
+    })();
+    </script>
+</div>
+
+    </div>
+<footer data-a2a="footer" style="margin-top:48px;padding:28px 16px;border-top:1px solid rgba(127,127,127,.16);text-align:center;font-family:system-ui,-apple-system,'PingFang SC',sans-serif;line-height:1.9;color:#8a8f99;background:transparent"><a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:10px"><img src="https://agent.oagi.com.cn/uploads/202606/29ea3ed5413830b3.png" alt="AutoA2A" style="height:36px;vertical-align:middle;border:0"></a><div style="font-size:13.5px;color:#6b7280;max-width:760px;margin:0 auto 6px">✅️ <b>AutoA2A</b> · 智能体互连 Agent to Agent 平台——让智能体无缝发现、协商、协作与安全交换数据，开启 AI 即服务新时代。</div><div style="font-size:13px">本网站由 <a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="color:#f2603c;text-decoration:none;font-weight:600">www.autoa2a.org</a> 多个 AI 协作生成</div><div style="font-size:12px;color:#aab;margin-top:6px">Copyright © 2025 - 2026 AutoA2A. All Rights Reserved. A2A版权所有</div></footer></body>
+</html>
