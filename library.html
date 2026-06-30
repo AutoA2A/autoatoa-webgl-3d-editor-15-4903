@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型库</title>
+    <style>
+        body {
+            font-family: 'Open Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        .nav-bar {
+            background-color: #3498db;
+            color: #fff;
+            padding: 8px 16px;
+            text-align: center;
+        }
+        .nav-bar ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .nav-bar ul li {
+            display: inline-block;
+            margin-right: 16px;
+        }
+        .nav-bar ul li a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .nav-bar ul li a:hover {
+            color: #2ecc71;
+        }
+        .header {
+            background-color: #9b59b6;
+            color: #fff;
+            padding: 16px;
+            text-align: center;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 8px;
+            }
+        }
+    </style>
+<meta name="description" content="浏览和搜索可用的3D模型，点击导入到编辑器"><meta name="keywords" content="WebGL,3D模型编辑器,协同编辑,GLTF,OBJ"><meta name="robots" content="index,follow,max-image-preview:large"><meta property="og:type" content="website"><meta property="og:title" content="模型库"><meta property="og:description" content="浏览和搜索可用的3D模型，点击导入到编辑器"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="模型库"><meta name="twitter:description" content="浏览和搜索可用的3D模型，点击导入到编辑器"><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"模型库","description":"浏览和搜索可用的3D模型，点击导入到编辑器","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}}</script><style data-a2a="basecss">*,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0}img,canvas,svg,video,table{max-width:100%;height:auto}pre,code{white-space:pre-wrap;word-break:break-word}[data-a2a="header"]{width:100%}@media(max-width:640px){body{font-size:15px}}</style></head>
+<body>
+    <div class="nav-bar">
+        <ul>
+            <li><a href="index.html">首页</a></li>
+            <li><a href="library.html">模型库</a></li>
+            <li><a href="collaboration.html">协同编辑</a></li>
+            <li><a href="help.html">帮助与教程</a></li>
+            <li><a href="settings.html">设置</a></li>
+        </ul>
+    </div>
+    <div class="header">
+        <h1>WebGL 3D 模型编辑器</h1>
+    </div>
+    <div class="container">
+        
+<section>
+    <h2>模型库</h2>
+    <input type="text" id="modelSearch" placeholder="搜索模型…">
+    <div class="grid-row" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;" id="modelGrid">
+    </div>
+</section>
+<script>
+/* model data */
+const models = [
+    {name:"彩色立方体", thumb:"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDQwIDQwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjIwIiBjeT0iMjAiIHI9IjIwIiBmaWxsPSIjRkZEMDAwIi8+PHRleHQgeD0iMjAiIHk9IjI1IiBmb250LXNpemU9IjEwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDAwIj5UZXJtPC90ZXh0Pjwvc3ZnPg==", glb:"data:application/octet-stream;base64,AAABAAIAAQAMABAAAHt3AACgAwAAAqQAAJRUAAAcfwAAdO8AAA=="},
+    {name:"简易球体", thumb:"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDQwIDQwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjIwIiBjeT0iMjAiIHI9IjIwIiBmaWxsPSIjMDBGRjAwIi8+PHRleHQgeD0iMjAiIHk9IjI1IiBmb250LXNpemU9IjEwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMDAwIj5TdW4gPC90ZXh0Pjwvc3ZnPg==", glb:"data:application/octet-stream;base64,AAABAAIAAQAMABAAAHt3AACgAwAAAqQAAJRUAAAcfwAAdO8AAA=="}
+];
+function renderModels(filter=''){
+    const grid = document.getElementById('modelGrid');
+    grid.innerHTML = '';
+    const filtered = models.filter(m=>m.name.includes(filter));
+    filtered.forEach(m=>{
+        const card = document.createElement('article');
+        card.className = 'card';
+        // media component
+        const media = document.createElement('div');
+        media.className = 'media';
+        media.innerHTML = `<img src="${m.thumb}" alt="${m.name}" style="width:100px;height:100px;margin-right:16px;border-radius:8px;"><div><h3>${m.name}</h3><p></p></div>`;
+        // button
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.textContent = '导入';
+        btn.onclick = () => {
+            const id = encodeURIComponent(m.name);
+            window.location.href = `index.html?id=${id}`;
+        };
+        card.appendChild(media);
+        card.appendChild(btn);
+        grid.appendChild(card);
+    });
+}
+document.getElementById('modelSearch').addEventListener('input', e=> renderModels(e.target.value.trim()));
+renderModels();
+</script>
+
+    </div>
+<footer data-a2a="footer" style="margin-top:48px;padding:28px 16px;border-top:1px solid rgba(127,127,127,.16);text-align:center;font-family:system-ui,-apple-system,'PingFang SC',sans-serif;line-height:1.9;color:#8a8f99;background:transparent"><a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:10px"><img src="https://agent.oagi.com.cn/uploads/202606/29ea3ed5413830b3.png" alt="AutoA2A" style="height:36px;vertical-align:middle;border:0"></a><div style="font-size:13.5px;color:#6b7280;max-width:760px;margin:0 auto 6px">✅️ <b>AutoA2A</b> · 智能体互连 Agent to Agent 平台——让智能体无缝发现、协商、协作与安全交换数据，开启 AI 即服务新时代。</div><div style="font-size:13px">本网站由 <a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="color:#f2603c;text-decoration:none;font-weight:600">www.autoa2a.org</a> 多个 AI 协作生成</div><div style="font-size:12px;color:#aab;margin-top:6px">Copyright © 2025 - 2026 AutoA2A. All Rights Reserved. A2A版权所有</div></footer></body>
+</html>
