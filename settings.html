@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置</title>
+    <style>
+        body {
+            font-family: 'Open Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        .nav-bar {
+            background-color: #3498db;
+            color: #fff;
+            padding: 8px 16px;
+            text-align: center;
+        }
+        .nav-bar ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .nav-bar ul li {
+            display: inline-block;
+            margin-right: 16px;
+        }
+        .nav-bar ul li a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .nav-bar ul li a:hover {
+            color: #2ecc71;
+        }
+        .header {
+            background-color: #9b59b6;
+            color: #fff;
+            padding: 16px;
+            text-align: center;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 8px;
+            }
+        }
+    </style>
+<meta name="description" content="调整渲染器参数，保存用户偏好"><meta name="keywords" content="WebGL,3D模型编辑器,协同编辑,GLTF,OBJ"><meta name="robots" content="index,follow,max-image-preview:large"><meta property="og:type" content="website"><meta property="og:title" content="设置"><meta property="og:description" content="调整渲染器参数，保存用户偏好"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="设置"><meta name="twitter:description" content="调整渲染器参数，保存用户偏好"><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"设置","description":"调整渲染器参数，保存用户偏好","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}}</script><style data-a2a="basecss">*,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0}img,canvas,svg,video,table{max-width:100%;height:auto}pre,code{white-space:pre-wrap;word-break:break-word}[data-a2a="header"]{width:100%}@media(max-width:640px){body{font-size:15px}}</style></head>
+<body>
+    <div class="nav-bar">
+        <ul>
+            <li><a href="index.html">首页</a></li>
+            <li><a href="library.html">模型库</a></li>
+            <li><a href="collaboration.html">协同编辑</a></li>
+            <li><a href="help.html">帮助与教程</a></li>
+            <li><a href="settings.html">设置</a></li>
+        </ul>
+    </div>
+    <div class="header">
+        <h1>WebGL 3D 模型编辑器</h1>
+    </div>
+    <div class="container">
+        
+<section style="margin-bottom:16px;">
+  <h2 style="margin-top:0;">渲染器设置</h2>
+  <div style="background:#fff;padding:16px;border:1px solid #ddd;border-radius:8px;box-shadow:0 0 8px rgba(0,0,0,0.1);margin-bottom:16px;">
+    <h3>背景颜色</h3>
+    <input type="color" id="bgColor" value="#ffffff" style="width:100%;padding:4px;">
+  </div>
+  <div style="background:#fff;padding:16px;border:1px solid #ddd;border-radius:8px;box-shadow:0 0 8px rgba(0,0,0,0.1);margin-bottom:16px;">
+    <h3>光源颜色</h3>
+    <input type="color" id="lightColor" value="#ffffff" style="width:100%;padding:4px;">
+  </div>
+  <div style="background:#fff;padding:16px;border:1px solid #ddd;border-radius:8px;box-shadow:0 0 8px rgba(0,0,0,0.1);margin-bottom:16px;">
+    <h3>光源强度</h3>
+    <label>强度: <span id="lightIntensityVal">1.0</span></label><br>
+    <input type="range" id="lightIntensity" min="0" max="3" step="0.1" value="1" style="width:100%;">
+  </div>
+  <div style="background:#fff;padding:16px;border:1px solid #ddd;border-radius:8px;box-shadow:0 0 8px rgba(0,0,0,0.1);margin-bottom:16px;">
+    <h3>抗锯齿</h3>
+    <label><input type="checkbox" id="aaToggle" checked> 启用抗锯齿</label>
+  </div>
+  <div style="background:#fff;padding:16px;border:1px solid #ddd;border-radius:8px;box-shadow:0 0 8px rgba(0,0,0,0.1);margin-bottom:16px;">
+    <h3>视野 (FOV)</h3>
+    <label>FOV: <span id="fovVal">60</span>°</label><br>
+    <input type="range" id="fov" min="30" max="120" step="1" value="60" style="width:100%;">
+  </div>
+  <div style="text-align:right;">
+    <button class="btn" id="saveBtn" style="background-color:#3498db;color:#fff;border:none;padding:8px 16px;font-size:16px;cursor:pointer;border-radius:8px;margin-right:8px;">保存设置</button>
+    <button class="btn" id="resetBtn" style="background-color:#3498db;color:#fff;border:none;padding:8px 16px;font-size:16px;cursor:pointer;border-radius:8px;">重置为默认</button>
+  </div>
+</section>
+
+<script>
+  const STORAGE_KEY = 'editorSettings';
+  const defaults = {
+    bgColor: '#ffffff',
+    lightColor: '#ffffff',
+    lightIntensity: 1.0,
+    aaEnabled: true,
+    fov: 60
+  };
+  function loadSettings(){
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const settings = stored ? JSON.parse(stored) : defaults;
+    document.getElementById('bgColor').value = settings.bgColor;
+    document.getElementById('lightColor').value = settings.lightColor;
+    document.getElementById('lightIntensity').value = settings.lightIntensity;
+    document.getElementById('lightIntensityVal').textContent = settings.lightIntensity;
+    document.getElementById('aaToggle').checked = settings.aaEnabled;
+    document.getElementById('fov').value = settings.fov;
+    document.getElementById('fovVal').textContent = settings.fov;
+  }
+  function saveSettings(){
+    const settings = {
+      bgColor: document.getElementById('bgColor').value,
+      lightColor: document.getElementById('lightColor').value,
+      lightIntensity: parseFloat(document.getElementById('lightIntensity').value),
+      aaEnabled: document.getElementById('aaToggle').checked,
+      fov: parseInt(document.getElementById('fov').value,10)
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    alert('设置已保存');
+  }
+  function resetSettings(){
+    document.getElementById('bgColor').value = defaults.bgColor;
+    document.getElementById('lightColor').value = defaults.lightColor;
+    document.getElementById('lightIntensity').value = defaults.lightIntensity;
+    document.getElementById('lightIntensityVal').textContent = defaults.lightIntensity;
+    document.getElementById('aaToggle').checked = defaults.aaEnabled;
+    document.getElementById('fov').value = defaults.fov;
+    document.getElementById('fovVal').textContent = defaults.fov;
+  }
+  document.getElementById('saveBtn').addEventListener('click', saveSettings);
+  document.getElementById('resetBtn').addEventListener('click', resetSettings);
+  document.getElementById('lightIntensity').addEventListener('input', e=>{
+    document.getElementById('lightIntensityVal').textContent = e.target.value;
+  });
+  document.getElementById('fov').addEventListener('input', e=>{
+    document.getElementById('fovVal').textContent = e.target.value;
+  });
+  loadSettings();
+</script>
+
+    </div>
+<footer data-a2a="footer" style="margin-top:48px;padding:28px 16px;border-top:1px solid rgba(127,127,127,.16);text-align:center;font-family:system-ui,-apple-system,'PingFang SC',sans-serif;line-height:1.9;color:#8a8f99;background:transparent"><a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:10px"><img src="https://agent.oagi.com.cn/uploads/202606/29ea3ed5413830b3.png" alt="AutoA2A" style="height:36px;vertical-align:middle;border:0"></a><div style="font-size:13.5px;color:#6b7280;max-width:760px;margin:0 auto 6px">✅️ <b>AutoA2A</b> · 智能体互连 Agent to Agent 平台——让智能体无缝发现、协商、协作与安全交换数据，开启 AI 即服务新时代。</div><div style="font-size:13px">本网站由 <a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="color:#f2603c;text-decoration:none;font-weight:600">www.autoa2a.org</a> 多个 AI 协作生成</div><div style="font-size:12px;color:#aab;margin-top:6px">Copyright © 2025 - 2026 AutoA2A. All Rights Reserved. A2A版权所有</div></footer></body>
+</html>
